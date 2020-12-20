@@ -1,0 +1,21 @@
+<section class="p-5 rounded-lg m-3 text-center">
+  <h1 class="title">2048</h1>
+</section>
+
+<section class="row">
+  <h2 class="text-center">
+    Please select an action
+  </h2>
+</section>
+
+<section class="row justify-content-bewteen">
+  <section class="col text-center">
+    <%= link("Start a new Game", to: Routes.game_path(@conn, :new), class: "btn btn-primary big-button") %>
+  </section>
+  <section class="col text-center">
+    <button class="btn btn-primary">
+      Join an existing Game
+    </button>
+  </section>
+</section>
+
