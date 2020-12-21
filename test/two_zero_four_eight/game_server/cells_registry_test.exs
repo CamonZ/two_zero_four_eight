@@ -6,7 +6,7 @@ defmodule TwoZeroFourEight.GameServer.CellsRegistryTest do
 
   setup do
     slug = SlugGenerator.create()
-    {:ok, _} = GamesRegistry.start_link(slug)
+    {:ok, _} = CellsRegistry.start_link(slug)
 
     %{slug: slug}
   end
@@ -14,74 +14,52 @@ defmodule TwoZeroFourEight.GameServer.CellsRegistryTest do
   describe "register/2" do
     test "registers the current process under the coordinates, col, row and cells", ctx do
       CellsRegistry.register({1, 5}, ctx.slug)
-      CellsRegistry.all(ctx.slug) == [{self(), {1, 5}}]
 
-      CellsRegistry.all_for_row(5, ctx.slug) == [{self(), {1, 5}}]
-      CellsRegistry.all_for_column(1, ctx.slug) == [{self(), {1, 5}}]
+      assert CellsRegistry.all(ctx.slug) == [{self(), {1, 5}}]
+      assert CellsRegistry.all_for_row(5, ctx.slug) == [{self(), 5}]
+      assert CellsRegistry.all_for_column(1, ctx.slug) == [{self(), 1}]
     end
   end
 
-  test "unregister/1 unregisters the current process with the given slug" do
-    {:ok, _} = GamesRegistry.start_link(ctx.test)
-    GamesRegistry.register("foo-bar-baz", ctx.test)
-    registrations = GamesRegistry.all(ctx.test)
+  test "unregister/1 unregisters the current process with the given slug", ctx do
+    CellsRegistry.register({6, 1}, ctx.slug)
+    CellsRegistry.unregister({6, 1}, ctx.slug)
 
-    assert [{"foo-bar-baz", self()}] == registrations
-
-    GamesRegistry.unregister("foo-bar-baz", ctx.test)
-    registrations = GamesRegistry.all(ctx.test)
-    assert registrations == []
+    assert CellsRegistry.all_for_row(1, ctx.slug) == []
+    assert CellsRegistry.all_for_column(6, ctx.slug) == []
+    assert CellsRegistry.all(ctx.slug) == []
   end
 
-  test "get_by_coordinates/2 returns a single item list with the pid at the given coordinates" do
-    {:ok, _} = GamesRegistry.start_link(ctx.test)
-    GamesRegistry.register("foo-bar-baz", ctx.test)
-
-    result = GamesRegistry.get("foo-bar-baz", ctx.test)
-
-    assert result == [{self(), "foo-bar-baz"}]
+  test "get_by_coordinates/2 returns a single item list with the pid at the coordinates", ctx do
+    CellsRegistry.register({3, 5}, ctx.slug)
+    assert CellsRegistry.get_by_coordinates({3, 5}, ctx.slug) == [{self(), ""}]
   end
 
-  describe "has_slug/1" do
-    setup ctx do
-      {:ok, _} = GamesRegistry.start_link(ctx.test)
-      GamesRegistry.register("foo-bar-baz", ctx.test)
-
-      ctx
-    end
-
-    test "returns true when slug is in the registry", ctx do
-      assert GamesRegistry.has_slug?("foo-bar-baz", ctx.test)
-    end
-
-    test "returns false when the slug is not in the registry", ctx do
-      refute GamesRegistry.has_slug?("some-other-slug", ctx.test)
-    end
-  end
-
-  test "all/0 returns all slugs and pids in the registry", ctx do
-    slug_one = SlugGenerator.create()
-    slug_two = SlugGenerator.create()
-
-    {:ok, _} = GamesRegistry.start_link(ctx.test)
-
+  test "all_for_column/2 returns all the pids for the given column", ctx do
     {:ok, pid_one} =
-      Agent.start(fn ->
-        GamesRegistry.register(slug_one, ctx.test)
-
+      Agent.start_link(fn ->
+        CellsRegistry.register({2, 3}, ctx.slug)
         %{}
       end)
 
     {:ok, pid_two} =
-      Agent.start(fn ->
-        GamesRegistry.register(slug_two, ctx.test)
+      Agent.start_link(fn ->
+        CellsRegistry.register({2, 4}, ctx.slug)
         %{}
       end)
 
-    registrations = GamesRegistry.all(ctx.test)
+    {:ok, pid_three} =
+      Agent.start_link(fn ->
+        CellsRegistry.register({3, 1}, ctx.slug)
+        %{}
+      end)
 
-    assert length(registrations) == 2
-    assert {slug_one, pid_one} in registrations
-    assert {slug_two, pid_two} in registrations
+    entries = CellsRegistry.all_for_column(2, ctx.slug)
+
+    assert length(entries) == 2
+    assert {pid_one, 2} in entries
+    assert {pid_two, 2} in entries
+
+    assert CellsRegistry.all_for_column(3, ctx.slug) == [{pid_three, 3}]
   end
 end

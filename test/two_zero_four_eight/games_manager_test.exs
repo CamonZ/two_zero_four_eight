@@ -1,13 +1,13 @@
-defmodule TwoZeroFourEight.GameManagerTest do
+defmodule TwoZeroFourEight.GamesManagerTest do
   use ExUnit.Case
 
   alias TwoZeroFourEight.{
-    GameManager,
+    GamesManager,
     SlugGenerator
   }
 
   test "create returns an :ok tuple with an unique slug name" do
-    assert {:ok, slug} = GameManager.create()
+    assert {:ok, slug} = GamesManager.create()
     assert SlugGenerator.is_slug?(slug)
   end
 end

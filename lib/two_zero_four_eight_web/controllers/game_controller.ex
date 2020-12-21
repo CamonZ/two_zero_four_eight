@@ -1,7 +1,7 @@
 defmodule TwoZeroFourEightWeb.GameController do
   use TwoZeroFourEightWeb, :controller
 
-  alias TwoZeroFourEight.GameManager
+  alias TwoZeroFourEight.GamesManager
 
   def index(conn, _) do
     render(conn, "index.html")
@@ -16,7 +16,7 @@ defmodule TwoZeroFourEightWeb.GameController do
   end
 
   def create(conn, _) do
-    case GameManager.create() do
+    case GamesManager.create() do
       {:ok, slug} ->
         redirect(conn, to: Routes.game_path(conn, :show, slug))
 
@@ -27,9 +27,17 @@ defmodule TwoZeroFourEightWeb.GameController do
     end
   end
 
-  def show(conn, %{"id" => _slug}) do
-    conn
-    |> put_layout("game.html")
-    |> render("show.html")
+  def show(conn, %{"id" => slug}) do
+    case GamesManager.get(slug) do
+      {:ok, game_state} ->
+        conn
+        |> put_layout("game.html")
+        |> render("show.html", %{state: game_state})
+
+      {:error, :not_found} ->
+        conn
+        |> put_flash(:error, "Not Found")
+        |> redirect(to: Routes.game_path(conn, :index))
+    end
   end
 end

@@ -5,7 +5,10 @@ defmodule TwoZeroFourEight.Application do
 
   use Application
 
-  alias TwoZeroFourEight.GamesRegistry
+  alias TwoZeroFourEight.{
+    GamesManager,
+    GamesRegistry
+  }
 
   @runtime_env Application.get_env(:two_zero_four_eight, :runtime_env)
 
@@ -17,7 +20,8 @@ defmodule TwoZeroFourEight.Application do
       {Phoenix.PubSub, name: TwoZeroFourEight.PubSub},
       # Start the Endpoint (http/https)
       TwoZeroFourEightWeb.Endpoint,
-      Supervisor.Spec.worker(GamesRegistry, [])
+      Supervisor.Spec.worker(GamesRegistry, []),
+      Supervisor.Spec.worker(GamesManager, [])
     ]
 
     # See https://hexdocs.pm/elixir/Supervisor.html

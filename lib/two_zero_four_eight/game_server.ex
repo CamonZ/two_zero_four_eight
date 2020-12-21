@@ -17,6 +17,10 @@ defmodule TwoZeroFourEight.GameServer do
     end
   end
 
+  def game_state(pid) do
+    GenServer.call(pid, :game_state)
+  end
+
   def start_link(opts) when is_list(opts) do
     case Keyword.fetch(opts, :slug) do
       {:ok, slug} ->
@@ -53,15 +57,23 @@ defmodule TwoZeroFourEight.GameServer do
 
     case length(result) == state.width * state.length and
            Enum.all?(result, fn {_, res} -> res == {:ok, {:ok, :configured}} end) do
-      true -> {:noreply, %{state | status: :ready}}
-      false -> {:stop, :error_creating_cells}
+      true ->
+        spawn_value(state)
+        {:noreply, %{state | status: :ready}}
+
+      false ->
+        {:stop, :error_creating_cells}
     end
   end
 
   @valid_directions [:up, :down, :left, :right]
 
-  def handle_cast({:move, direction}, _, state) when direction in @valid_directions do
-    {:noreply, state}
+  def handle_call({:move, direction}, _, state) when direction in @valid_directions do
+    {:reply, {:ok, cells_state(state)}, state}
+  end
+
+  def handle_call(:game_state, _, state) do
+    {:reply, cells_state(state), state}
   end
 
   defp configure_cells(cells) do
@@ -78,5 +90,48 @@ defmodule TwoZeroFourEight.GameServer do
       end)
     end)
     |> Keyword.get_values(:ok)
+  end
+
+  defp cells_state(state) do
+    state
+    |> cells()
+    |> get_cells_state()
+  end
+
+  defp cells(%{slug: slug}) do
+    CellsRegistry.all(slug)
+  end
+
+  defp get_cells_state(cells) do
+    cells
+    |> Enum.map(fn {pid, coord} ->
+      {
+        serialize_coordinates(coord),
+        Cell.get_value(pid)
+      }
+    end)
+    |> Enum.into(%{})
+  end
+
+  defp serialize_coordinates({col, row}) do
+    "#{col}-#{row}"
+  end
+
+  defp empty_cells(state) do
+    state
+    |> cells()
+    |> Enum.map(fn {pid, coord} -> {coord, Cell.is_empty?(pid)} end)
+    |> Enum.filter(fn {_, val} -> val end)
+  end
+
+  defp spawn_value(state) do
+    state
+    |> empty_cells()
+    |> Enum.random()
+    |> elem(0)
+    |> CellsRegistry.get_by_coordinates(state.slug)
+    |> List.first()
+    |> elem(0)
+    |> Cell.spawn_value()
   end
 end

@@ -32,10 +32,6 @@
       <div class="grid-cell"></div>
       <div class="grid-cell"></div>
       <div class="grid-cell"></div>
-    </div>
-    <div class="grid-row">
-      <div class="grid-cell"></div>
-      <div class="grid-cell"></div>
       <div class="grid-cell"></div>
       <div class="grid-cell"></div>
     </div>
@@ -44,8 +40,36 @@
       <div class="grid-cell"></div>
       <div class="grid-cell"></div>
       <div class="grid-cell"></div>
+      <div class="grid-cell"></div>
+      <div class="grid-cell"></div>
     </div>
     <div class="grid-row">
+      <div class="grid-cell"></div>
+      <div class="grid-cell"></div>
+      <div class="grid-cell"></div>
+      <div class="grid-cell"></div>
+      <div class="grid-cell"></div>
+      <div class="grid-cell"></div>
+    </div>
+    <div class="grid-row">
+      <div class="grid-cell"></div>
+      <div class="grid-cell"></div>
+      <div class="grid-cell"></div>
+      <div class="grid-cell"></div>
+      <div class="grid-cell"></div>
+      <div class="grid-cell"></div>
+    </div>
+    <div class="grid-row">
+      <div class="grid-cell"></div>
+      <div class="grid-cell"></div>
+      <div class="grid-cell"></div>
+      <div class="grid-cell"></div>
+      <div class="grid-cell"></div>
+      <div class="grid-cell"></div>
+    </div>
+    <div class="grid-row">
+      <div class="grid-cell"></div>
+      <div class="grid-cell"></div>
       <div class="grid-cell"></div>
       <div class="grid-cell"></div>
       <div class="grid-cell"></div>
@@ -54,7 +78,15 @@
   </div>
 
   <div class="tile-container">
-
+    <%= for row <- organized_state(@state) do %>
+      <%= for {coord, value} <- row do %>
+        <%= if not is_nil(value) do %>
+          <div class="<%= class_for_tile(coord, value) %>" >
+            <div class="tile-inner rev"><%= value %></div>
+          </div>
+        <% end %>
+      <% end %>
+    <% end %>
   </div>
 </div>
 
