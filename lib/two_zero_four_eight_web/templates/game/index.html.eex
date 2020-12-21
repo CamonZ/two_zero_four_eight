@@ -10,12 +10,22 @@
 
 <section class="row justify-content-bewteen">
   <section class="col text-center">
-    <%= link("Start a new Game", to: Routes.game_path(@conn, :new), class: "btn btn-primary big-button") %>
+    <%= form_for @conn, Routes.game_path(@conn, :create), fn _ -> %>
+      <%= submit("Start a new Game", class: "btn btn-primary big-button") %>
+    <% end %>
+   
   </section>
   <section class="col text-center">
-    <button class="btn btn-primary">
-      Join an existing Game
-    </button>
+    <%= form_for @conn, Routes.game_path(@conn, :find_game), fn f -> %>
+      <div class="row justify-content-center">
+        <div class="col-4 ">
+          <%= text_input(f, :slug, class: "form-control mb-3", placeholder: "Slug Name") %>
+        </div>
+        <div class="col-4">
+          <%= submit("Join an existing Game", class: "btn btn-primary big-button") %>
+        </div>
+      </div>
+    <% end %>
   </section>
 </section>
 

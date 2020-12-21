@@ -8,7 +8,11 @@ defmodule TwoZeroFourEightWeb.GameController do
   end
 
   def new(conn, _) do
-    redirect(conn, to: Routes.game_path(conn, :create))
+    render(conn, "new.html")
+  end
+
+  def find_game(conn, %{"slug" => slug}) do
+    redirect(conn, to: Routes.game_path(conn, :show, slug))
   end
 
   def create(conn, _) do
@@ -24,6 +28,8 @@ defmodule TwoZeroFourEightWeb.GameController do
   end
 
   def show(conn, %{"id" => _slug}) do
-    render(conn, "show.html")
+    conn
+    |> put_layout("game.html")
+    |> render("show.html")
   end
 end

@@ -5,6 +5,10 @@ defmodule TwoZeroFourEight.Application do
 
   use Application
 
+  alias TwoZeroFourEight.GamesRegistry
+
+  @runtime_env Application.get_env(:two_zero_four_eight, :runtime_env)
+
   def start(_type, _args) do
     children = [
       # Start the Telemetry supervisor
@@ -12,9 +16,8 @@ defmodule TwoZeroFourEight.Application do
       # Start the PubSub system
       {Phoenix.PubSub, name: TwoZeroFourEight.PubSub},
       # Start the Endpoint (http/https)
-      TwoZeroFourEightWeb.Endpoint
-      # Start a worker by calling: TwoZeroFourEight.Worker.start_link(arg)
-      # {TwoZeroFourEight.Worker, arg}
+      TwoZeroFourEightWeb.Endpoint,
+      Supervisor.Spec.worker(GamesRegistry, [])
     ]
 
     # See https://hexdocs.pm/elixir/Supervisor.html

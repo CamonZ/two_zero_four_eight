@@ -11,6 +11,8 @@ defmodule TwoZeroFourEightWeb.Router do
 
   scope "/", TwoZeroFourEightWeb do
     pipe_through :browser
+
+    post("/find_game", GameController, :find_game)
     resources("/", GameController, only: [:index, :new, :create, :show])
   end
 end
