@@ -91,12 +91,12 @@ defmodule TwoZeroFourEight.GameServer.CellTest do
                down: self()
              }
     end
+  end
 
-    defp register_sibling(coordinates, ctx) do
-      Agent.start_link(fn ->
-        CellsRegistry.register(coordinates, ctx.slug)
-        %{}
-      end)
-    end
+  defp register_sibling(coordinates, ctx) do
+    Agent.start_link(fn ->
+      CellsRegistry.register(coordinates, ctx.slug)
+      %{}
+    end)
   end
 end

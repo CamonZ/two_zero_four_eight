@@ -1,24 +1,43 @@
 defmodule TwoZeroFourEight.GameServer do
   use GenServer
 
-  defstruct slug: nil, moves: [], registry: nil, status: nil, width: 6, length: 6
+  defstruct slug: nil, moves: [], registry: nil, status: nil, width: 6, height: 6
 
-  alias TwoZeroFourEight.GamesRegistry
+  alias TwoZeroFourEight.{
+    GamesManager,
+    GamesRegistry
+  }
 
   alias __MODULE__.{
     Cell,
     CellsRegistry
   }
 
-  def move(slug, direction) do
-    case GamesRegistry.get(slug) do
-      [] -> {:error, :not_found}
-      [{pid, _}] -> GenServer.call(pid, {:move, direction})
+  @valid_directions [:up, :down, :left, :right]
+
+  def move(slug, direction) when direction in @valid_directions do
+    case server_pid(slug) do
+      {:ok, pid} -> GenServer.call(pid, {:move, direction})
+      error -> error
     end
   end
 
-  def game_state(pid) do
-    GenServer.call(pid, :game_state)
+  def move(_, _) do
+    {:error, :invalid_args}
+  end
+
+  def game_state(slug) do
+    case server_pid(slug) do
+      {:ok, pid} -> GenServer.call(pid, :game_state)
+      error -> error
+    end
+  end
+
+  def server_pid(slug) do
+    case GamesRegistry.get(slug) do
+      [] -> {:error, :not_found}
+      [{pid, _}] -> {:ok, pid}
+    end
   end
 
   def start_link(opts) when is_list(opts) do
@@ -55,7 +74,7 @@ defmodule TwoZeroFourEight.GameServer do
       |> spawn_cells()
       |> configure_cells()
 
-    case length(result) == state.width * state.length and
+    case length(result) == state.width * state.height and
            Enum.all?(result, fn {_, res} -> res == {:ok, {:ok, :configured}} end) do
       true ->
         spawn_value(state)
@@ -66,10 +85,34 @@ defmodule TwoZeroFourEight.GameServer do
     end
   end
 
-  @valid_directions [:up, :down, :left, :right]
+  def handle_call({:move, direction}, _, %{status: st} = state) when st != :won do
+    current_state = cells_state(state)
 
-  def handle_call({:move, direction}, _, state) when direction in @valid_directions do
-    {:reply, {:ok, cells_state(state)}, state}
+    direction
+    |> cells_for_direction(state)
+    |> Enum.map(fn pid -> Task.async(fn -> Cell.move(pid, direction) end) end)
+    |> Task.yield_many()
+
+    tentative_state = cells_state(state)
+
+    cond do
+      current_state == tentative_state ->
+        {:reply, {:ok, current_state}, state}
+
+      game_won?(tentative_state) ->
+        GamesManager.broadcast_win(state.slug, tentative_state)
+        {:reply, {:ok, tentative_state}, %{state | status: :won}}
+
+      true ->
+        spawn_value(state)
+        new_game_state = cells_state(state)
+        GamesManager.broadcast_move(state.slug, new_game_state)
+        {:reply, {:ok, new_game_state}, state}
+    end
+  end
+
+  def handle_call({:move, _}, _, state) do
+    {:reply, cells_state(state), state}
   end
 
   def handle_call(:game_state, _, state) do
@@ -85,7 +128,7 @@ defmodule TwoZeroFourEight.GameServer do
   defp spawn_cells(state) do
     1..state.width
     |> Enum.flat_map(fn col ->
-      Enum.map(1..state.length, fn row ->
+      Enum.map(1..state.height, fn row ->
         Cell.start_link(slug: state.slug, coordinates: {col, row})
       end)
     end)
@@ -94,11 +137,11 @@ defmodule TwoZeroFourEight.GameServer do
 
   defp cells_state(state) do
     state
-    |> cells()
+    |> get_cells()
     |> get_cells_state()
   end
 
-  defp cells(%{slug: slug}) do
+  defp get_cells(%{slug: slug}) do
     CellsRegistry.all(slug)
   end
 
@@ -110,6 +153,7 @@ defmodule TwoZeroFourEight.GameServer do
         Cell.get_value(pid)
       }
     end)
+    |> Enum.reject(fn {_, v} -> is_nil(v) end)
     |> Enum.into(%{})
   end
 
@@ -119,7 +163,7 @@ defmodule TwoZeroFourEight.GameServer do
 
   defp empty_cells(state) do
     state
-    |> cells()
+    |> get_cells()
     |> Enum.map(fn {pid, coord} -> {coord, Cell.is_empty?(pid)} end)
     |> Enum.filter(fn {_, val} -> val end)
   end
@@ -133,5 +177,24 @@ defmodule TwoZeroFourEight.GameServer do
     |> List.first()
     |> elem(0)
     |> Cell.spawn_value()
+  end
+
+  defp cells_for_direction(direction, state) do
+    cells =
+      case direction do
+        :down -> CellsRegistry.all_for_row(1, state.slug)
+        :up -> CellsRegistry.all_for_row(state.height, state.slug)
+        :left -> CellsRegistry.all_for_column(state.width, state.slug)
+        :right -> CellsRegistry.all_for_column(1, state.slug)
+      end
+
+    Enum.map(cells, &elem(&1, 0))
+  end
+
+  defp game_won?(tentative_win_state) do
+    values = Map.values(tentative_win_state)
+    require Logger
+    Logger.warn("Values: #{inspect(values)}")
+    2048 in values
   end
 end

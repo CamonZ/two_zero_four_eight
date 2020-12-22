@@ -14,13 +14,24 @@ defmodule TwoZeroFourEight.GamesManager do
   end
 
   def get(slug) do
-    case GamesRegistry.get(slug) do
-      [] ->
-        {:error, :not_found}
-
-      [{pid, _}] ->
-        {:ok, GameServer.game_state(pid)}
+    case GameServer.game_state(slug) do
+      {:error, :not_found} = err -> err
+      other -> {:ok, other}
     end
+  end
+
+  def broadcast_move(slug, state) do
+    payload = Enum.into(state, %{})
+    TwoZeroFourEightWeb.Endpoint.broadcast("games:#{slug}", "moved", payload)
+  end
+
+  def broadcast_win(slug, state) do
+    payload = Enum.into(state, %{})
+    TwoZeroFourEightWeb.Endpoint.broadcast("games:#{slug}", "won", payload)
+  end
+
+  def has_game?(slug) do
+    GamesRegistry.has_slug?(slug)
   end
 
   def start_link do

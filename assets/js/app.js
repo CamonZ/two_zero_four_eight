@@ -1,7 +1,7 @@
 // We need to import the CSS so that webpack will load it.
 // The MiniCssExtractPlugin is used to separate it out into
 // its own CSS file.
-import "../css/app.scss"
+import "../css/app.scss";
 
 // webpack automatically bundles all modules in your
 // entry points. Those entry points can be configured
@@ -12,24 +12,61 @@ import "../css/app.scss"
 //     import {Socket} from "phoenix"
 //     import socket from "./socket"
 //
-import "phoenix_html"
-import {Socket} from "phoenix"
-import NProgress from "nprogress"
-import {LiveSocket} from "phoenix_live_view"
+import "phoenix_html";
+import { Socket } from "phoenix";
 
-let csrfToken = document.querySelector("meta[name='csrf-token']").getAttribute("content")
-let liveSocket = new LiveSocket("/live", Socket, {params: {_csrf_token: csrfToken}})
+let gamesRe = /^\/games\/.+/;
 
-// Show progress bar on live navigation and form submits
-window.addEventListener("phx:page-loading-start", info => NProgress.start())
-window.addEventListener("phx:page-loading-stop", info => NProgress.done())
+let keysMap = {
+  37: "left",
+  38: "up",
+  39: "right",
+  40: "down",
+};
 
-// connect if there are any LiveViews on the page
-liveSocket.connect()
+const clearTiles = function () {
+  let tilesContainer = document.getElementsByClassName("tile-container")[0];
+  tilesContainer.innerHTML = "";
+};
 
-// expose liveSocket on window for web console debug logs and latency simulation:
-// >> liveSocket.enableDebug()
-// >> liveSocket.enableLatencySim(1000)  // enabled for duration of browser session
-// >> liveSocket.disableLatencySim()
-window.liveSocket = liveSocket
+const addTile = function (position, value) {
+  const textNode = document.createTextNode(value);
+  let innerTile = document.createElement("div");
+  innerTile.className = "tile-inner rev";
+  innerTile.appendChild(textNode);
 
+  let tile = document.createElement("div");
+  tile.className = `tile tile-${value} tile-position-${position}`;
+  tile.appendChild(innerTile);
+
+  let tilesContainer = document.getElementsByClassName("tile-container")[0];
+  tilesContainer.appendChild(tile);
+};
+
+if (window.location.pathname.match(gamesRe)) {
+  const parts = window.location.pathname.split("/");
+  const slug = parts[parts.length - 1];
+  const socket = new Socket("ws://localhost:4000/socket");
+  socket.connect();
+
+  const channel = socket.channel(`games:${slug}`);
+  channel.join();
+
+  channel.on("moved", (state) => {
+    clearTiles();
+    for (const [position, value] of Object.entries(state)) {
+      addTile(position, value);
+    }
+  });
+
+  document.addEventListener("keydown", (ev) => {
+    const modifiers =
+      event.altKey || event.ctrlKey || event.metaKey || event.shitKey;
+    const direction = keysMap[event.which];
+
+    if (!modifiers && direction !== undefined) {
+      event.preventDefault();
+      channel.push("move", { direction: direction });
+    }
+  });
+}
