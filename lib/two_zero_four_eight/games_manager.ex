@@ -25,9 +25,8 @@ defmodule TwoZeroFourEight.GamesManager do
     TwoZeroFourEightWeb.Endpoint.broadcast("games:#{slug}", "moved", payload)
   end
 
-  def broadcast_win(slug, state) do
-    payload = Enum.into(state, %{})
-    TwoZeroFourEightWeb.Endpoint.broadcast("games:#{slug}", "won", payload)
+  def broadcast_win(slug) do
+    TwoZeroFourEightWeb.Endpoint.broadcast("games:#{slug}", "game_won", %{})
   end
 
   def has_game?(slug) do

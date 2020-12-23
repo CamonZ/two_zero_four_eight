@@ -33,6 +33,20 @@ defmodule TwoZeroFourEight.GameServer do
     end
   end
 
+  def clear_state(slug) do
+    case server_pid(slug) do
+      {:ok, pid} -> GenServer.call(pid, :clear_state)
+      error -> error
+    end
+  end
+
+  def load_state(slug, state) do
+    case server_pid(slug) do
+      {:ok, pid} -> GenServer.call(pid, {:load_state, state})
+      error -> error
+    end
+  end
+
   def server_pid(slug) do
     case GamesRegistry.get(slug) do
       [] -> {:error, :not_found}
@@ -68,6 +82,8 @@ defmodule TwoZeroFourEight.GameServer do
     end
   end
 
+  @starting_value 2
+
   def handle_continue(:init_cells, state) do
     result =
       state
@@ -77,7 +93,8 @@ defmodule TwoZeroFourEight.GameServer do
     case length(result) == state.width * state.height and
            Enum.all?(result, fn {_, res} -> res == {:ok, {:ok, :configured}} end) do
       true ->
-        spawn_value(state)
+        spawn_value(state, @starting_value)
+
         {:noreply, %{state | status: :ready}}
 
       false ->
@@ -100,7 +117,8 @@ defmodule TwoZeroFourEight.GameServer do
         {:reply, {:ok, current_state}, state}
 
       game_won?(tentative_state) ->
-        GamesManager.broadcast_win(state.slug, tentative_state)
+        GamesManager.broadcast_move(state.slug, tentative_state)
+        GamesManager.broadcast_win(state.slug)
         {:reply, {:ok, tentative_state}, %{state | status: :won}}
 
       true ->
@@ -112,11 +130,31 @@ defmodule TwoZeroFourEight.GameServer do
   end
 
   def handle_call({:move, _}, _, state) do
-    {:reply, cells_state(state), state}
+    {:reply, {:ok, cells_state(state)}, state}
   end
 
   def handle_call(:game_state, _, state) do
     {:reply, cells_state(state), state}
+  end
+
+  def handle_call({:load_state, cells_state}, _, state) do
+    Enum.each(cells_state, fn {k, v} ->
+      case CellsRegistry.get_by_coordinates(k, state.slug) do
+        [{pid, _}] -> Cell.spawn_value(pid, v)
+        _ -> :ok
+      end
+    end)
+
+    {:reply, :ok, state}
+  end
+
+  def handle_call(:clear_state, _, state) do
+    state
+    |> get_cells()
+    |> Enum.map(&elem(&1, 0))
+    |> Enum.each(fn pid -> Cell.spawn_value(pid, nil) end)
+
+    {:reply, :ok, state}
   end
 
   defp configure_cells(cells) do
@@ -168,7 +206,9 @@ defmodule TwoZeroFourEight.GameServer do
     |> Enum.filter(fn {_, val} -> val end)
   end
 
-  defp spawn_value(state) do
+  @default_value 1
+
+  defp spawn_value(state, value \\ @default_value) do
     state
     |> empty_cells()
     |> Enum.random()
@@ -176,7 +216,7 @@ defmodule TwoZeroFourEight.GameServer do
     |> CellsRegistry.get_by_coordinates(state.slug)
     |> List.first()
     |> elem(0)
-    |> Cell.spawn_value()
+    |> Cell.spawn_value(value)
   end
 
   defp cells_for_direction(direction, state) do
@@ -192,9 +232,6 @@ defmodule TwoZeroFourEight.GameServer do
   end
 
   defp game_won?(tentative_win_state) do
-    values = Map.values(tentative_win_state)
-    require Logger
-    Logger.warn("Values: #{inspect(values)}")
-    2048 in values
+    2048 in Map.values(tentative_win_state)
   end
 end

@@ -93,6 +93,77 @@ defmodule TwoZeroFourEight.GameServer.CellTest do
     end
   end
 
+  describe "handle_call :move" do
+    test "returns the received values when it's the last cell and the cell has a value", ctx do
+      {:ok, pid} = Cell.start_link(slug: ctx.slug, coordinates: {1, 1})
+      :ok = Cell.spawn_value(pid, 8)
+
+      values = [4, 2, 1]
+
+      assert Cell.move(pid, :right, values) == [4, 2, 1]
+    end
+
+    test "returns the received values minus the first when it's the last cell and the cell is empty",
+         ctx do
+      {:ok, pid} = Cell.start_link(slug: ctx.slug, coordinates: {1, 1})
+
+      values = [4, 2, 1]
+
+      assert Cell.move(pid, :right, values) == [2, 1]
+
+      assert Cell.get_value(pid) == 4
+    end
+
+    test "returns the received values minus the first when it's the last cell and the cell has an addable value",
+         ctx do
+      {:ok, pid} = Cell.start_link(slug: ctx.slug, coordinates: {1, 1})
+      :ok = Cell.spawn_value(pid, 4)
+      values = [4, 2, 1]
+
+      assert Cell.move(pid, :right, values) == [2, 1]
+
+      assert Cell.get_value(pid) == 8
+    end
+
+    test "adds the first 2 received values if the values are addable and the cell is empty",
+         ctx do
+      {:ok, pid} = Cell.start_link(slug: ctx.slug, coordinates: {1, 1})
+      values = [4, 4, 2, 1]
+
+      assert Cell.move(pid, :right, values) == [2, 1]
+
+      assert Cell.get_value(pid) == 8
+    end
+
+    test "correctly processes a line of values", ctx do
+      {:ok, one} = Cell.start_link(slug: ctx.slug, coordinates: {1, 1})
+      {:ok, two} = Cell.start_link(slug: ctx.slug, coordinates: {2, 1})
+      {:ok, three} = Cell.start_link(slug: ctx.slug, coordinates: {3, 1})
+      {:ok, four} = Cell.start_link(slug: ctx.slug, coordinates: {4, 1})
+      {:ok, five} = Cell.start_link(slug: ctx.slug, coordinates: {5, 1})
+      {:ok, six} = Cell.start_link(slug: ctx.slug, coordinates: {6, 1})
+      cells = [one, two, three, four, five, six]
+
+      Enum.each(cells, fn pid -> Task.start(fn -> Cell.find_siblings(pid) end) end)
+
+      Cell.spawn_value(one, 1)
+      Cell.spawn_value(two, 1)
+      Cell.spawn_value(four, 2)
+      Cell.spawn_value(five, 2)
+      Cell.spawn_value(six, 2)
+
+      Cell.move(one, :right)
+
+      assert is_nil(Cell.get_value(one))
+      assert is_nil(Cell.get_value(two))
+      assert is_nil(Cell.get_value(three))
+
+      assert Cell.get_value(four) == 2
+      assert Cell.get_value(five) == 2
+      assert Cell.get_value(six) == 4
+    end
+  end
+
   defp register_sibling(coordinates, ctx) do
     Agent.start_link(fn ->
       CellsRegistry.register(coordinates, ctx.slug)

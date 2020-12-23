@@ -7,7 +7,7 @@ defmodule TwoZeroFourEight.GameServerTest do
     GameServer
   }
 
-  alias GameServer.CellsRegistry
+  alias GameServer.{CellsRegistry, Cell}
 
   describe "start_link/1" do
     test "can return an :ok tuple with a pid when called with valid args" do
@@ -71,6 +71,75 @@ defmodule TwoZeroFourEight.GameServerTest do
 
         assert length(CellsRegistry.all_for_column(col, slug)) == 6
       end
+    end
+  end
+
+  describe "handle_call/2" do
+    test ":game_state returns the game state" do
+      slug = SlugGenerator.create()
+      {:ok, pid} = GameServer.start_link(slug: slug)
+      :ok = GameServer.clear_state(slug)
+
+      new_state = %{{1, 1} => 512, {3, 1} => 512, {6, 1} => 1024}
+
+      :ok = GameServer.load_state(slug, new_state)
+
+      state = slug |> GameServer.game_state() |> Enum.sort()
+
+      assert state == [
+               {"1-1", 512},
+               {"3-1", 512},
+               {"6-1", 1024}
+             ]
+    end
+
+    test ":move spawns a 1 on an empty cell after a successul move" do
+      slug = SlugGenerator.create()
+      {:ok, pid} = GameServer.start_link(slug: slug)
+      :ok = GameServer.clear_state(slug)
+
+      :ok = GameServer.load_state(slug, %{{1, 1} => 2})
+
+      {:ok, new_state} = GameServer.move(slug, :right)
+
+      assert length(Map.keys(new_state)) == 2
+      assert new_state["6-1"] == 2
+
+      assert Map.values(new_state) -- [2] == [1]
+    end
+
+    test ":move doesn't spawn a value if a move isn't possible" do
+      slug = SlugGenerator.create()
+      {:ok, pid} = GameServer.start_link(slug: slug)
+      :ok = GameServer.clear_state(slug)
+
+      :ok = GameServer.load_state(slug, %{{1, 1} => 2})
+
+      {:ok, new_state} = GameServer.move(slug, :left)
+      assert new_state == %{"1-1" => 2}
+    end
+
+    test ":move doesn't accept a move when the game is won" do
+      slug = SlugGenerator.create()
+      {:ok, pid} = GameServer.start_link(slug: slug)
+      :ok = GameServer.clear_state(slug)
+
+      :ok = GameServer.load_state(slug, %{{5, 1} => 1024, {6, 1} => 1024})
+
+      {:ok, new_state} = GameServer.move(slug, :right)
+      assert new_state == %{"6-1" => 2048}
+
+      {:ok, new_state} = GameServer.move(slug, :down)
+      assert new_state == %{"6-1" => 2048}
+    end
+  end
+
+  defp str_coord_to_tuple(coord) do
+    [col_str, row_str] = String.split(coord, "-")
+
+    with {col, ""} <- Integer.parse(col_str),
+         {row, ""} <- Integer.parse(row_str) do
+      {col, row}
     end
   end
 end

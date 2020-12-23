@@ -27,8 +27,9 @@ defmodule TwoZeroFourEight.GameServer.Cell do
     GenServer.call(pid, :get_value)
   end
 
-  def spawn_value(pid) do
-    GenServer.call(pid, :spawn_value)
+  @default_value 1
+  def spawn_value(pid, value \\ @default_value) do
+    GenServer.call(pid, {:spawn_value, value})
   end
 
   def move(pid, direction, values \\ [])
@@ -85,8 +86,8 @@ defmodule TwoZeroFourEight.GameServer.Cell do
     {:reply, is_nil(state.value), state}
   end
 
-  def handle_call(:spawn_value, _, state) do
-    {:reply, :ok, %{state | value: 1}}
+  def handle_call({:spawn_value, value}, _, state) do
+    {:reply, :ok, %{state | value: value}}
   end
 
   def handle_call({:move, direction, received_values}, _, state) do

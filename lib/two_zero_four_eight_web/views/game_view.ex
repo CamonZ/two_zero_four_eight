@@ -10,4 +10,11 @@ defmodule TwoZeroFourEightWeb.GameView do
   def class_for_tile(coord, value) do
     "tile tile-#{value} tile-position-#{coord}"
   end
+
+  def class_for_win(state) do
+    case 2048 in Map.values(state) do
+      true -> ""
+      false -> "not-visible"
+    end
+  end
 end

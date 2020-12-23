@@ -10,8 +10,6 @@ defmodule TwoZeroFourEight.Application do
     GamesRegistry
   }
 
-  @runtime_env Application.get_env(:two_zero_four_eight, :runtime_env)
-
   def start(_type, _args) do
     children = [
       # Start the Telemetry supervisor

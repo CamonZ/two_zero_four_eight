@@ -59,6 +59,11 @@ if (window.location.pathname.match(gamesRe)) {
     }
   });
 
+  channel.on("game_won", () => {
+    let winContainer = document.getElementById("win-container");
+    winContainer.className = "";
+  });
+
   document.addEventListener("keydown", (ev) => {
     const modifiers =
       event.altKey || event.ctrlKey || event.metaKey || event.shitKey;

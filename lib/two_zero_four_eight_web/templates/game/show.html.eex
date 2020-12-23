@@ -89,4 +89,8 @@
 <p class="game-explanation">
   <strong class="important">How to play:</strong> Use your <strong>arrow keys</strong> to move the tiles. When two tiles with the same number touch, they <strong>merge into one!</strong>
 </p>
+
+<div id="win-container" class=<%= class_for_win(@state) %>>
+  <h2>Game Won!</h2>
+</div>
 <hr>
