@@ -46,7 +46,10 @@ const addTile = function (position, value) {
 if (window.location.pathname.match(gamesRe)) {
   const parts = window.location.pathname.split("/");
   const slug = parts[parts.length - 1];
-  const socket = new Socket("ws://localhost:4000/socket");
+
+  const proto = window.location.protocol == "https:" ? "wss" : "ws";
+
+  const socket = new Socket(`${proto}://${window.location.host}/socket`);
   socket.connect();
 
   const channel = socket.channel(`games:${slug}`);
